@@ -181,7 +181,6 @@ class TestField(unittest.TestCase):
             field_object.validate(struct), value, msg="{!s} / {!s} -> {!s}".format(type(field), struct, value))
 
 
-@unittest.skip('skip store')
 class TestStoreMemory(unittest.TestCase):
     def test_empty_cache(self):
         store_object = store.StoreMemory()
@@ -255,7 +254,6 @@ class TestStoreMemory(unittest.TestCase):
         self.assertTupleEqual(store_object.get("123"), ('a', 1, 'b', 2))
 
 
-@unittest.skip('skip suite')
 class TestSuite(unittest.TestCase):
     def setUp(self):
         self.context = {}

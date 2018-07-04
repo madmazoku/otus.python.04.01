@@ -49,3 +49,5 @@ class StoreMemory(metaclass=abc.ABCMeta):
 
     def set(self, key, value):
         self.data[key] = value
+
+StoreMemory.register(StoreBase)
