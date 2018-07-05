@@ -162,10 +162,13 @@ class MainHTTPHandler(BaseHTTPRequestHandler):
         self.wfile.write(json.dumps(r).encode("utf-8"))
         return
 
+    def log_message(self, format, *args):
+        logging.info('HTTP: ' + format, *args)
+
 
 if __name__ == "__main__":
     op = OptionParser()
-    op.add_option("-p", "--port", action="store", type=int, default=8080)
+    op.add_option("-p", "--port", action="store", type=int, default=8010)
     op.add_option("-l", "--log", action="store", default=None)
     op.add_option("-s", "--storage", action="store", default='.')
     (opts, args) = op.parse_args()

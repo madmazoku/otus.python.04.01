@@ -51,14 +51,6 @@ class ClientsInterestsRequest(field.FieldHolder):
         if not self.client_ids:
             raise ValueError('empty client ids list')
 
-    def get(self, ctx, store, method_request):
-        self.validate()
-        interests_dict = {}
-        for client_id in self.client_ids:
-            interests_dict[client_id] = scoring.get_interests(store, client_id)
-        ctx['nclients'] = self.nclients()
-        return interests_dict, OK
-
 
 class OnlineScoreRequest(field.FieldHolder):
     first_name = field.CharField(required=False, nullable=True)
@@ -86,22 +78,6 @@ class OnlineScoreRequest(field.FieldHolder):
             msg += '(phone, email), (first_name, last_name), (gender, birthday)'
             raise ValueError(msg)
 
-    def get(self, ctx, store, method_request):
-        self.validate()
-        if method_request.is_admin():
-            score = 42
-        else:
-            score = scoring.get_score(
-                store,
-                self.phone,
-                self.email,
-                birthday=self.birthday,
-                gender=self.gender,
-                first_name=self.first_name,
-                last_name=self.last_name)
-        ctx['has'] = self.has()
-        return {'score': score}, OK
-
 
 class MethodRequest(field.FieldHolder):
     account = field.CharField(required=False, nullable=True)
@@ -110,15 +86,8 @@ class MethodRequest(field.FieldHolder):
     arguments = field.ArgumentsField(required=True, nullable=True)
     method = field.CharField(required=True, nullable=False)
 
-    request_router = {'online_score': OnlineScoreRequest, 'clients_interests': ClientsInterestsRequest}
-
     def is_admin(self):
         return self.login == ADMIN_LOGIN
-
-    def validate(self):
-        super().validate()
-        if self.method not in self.request_router:
-            raise ValueError('Unknown method requested')
 
 
 def check_auth(request):
@@ -132,15 +101,49 @@ def check_auth(request):
     return False
 
 
+def clients_interests_handler(ctx, store, method_request):
+    clients_interests_request = ClientsInterestsRequest(method_request.arguments)
+    clients_interests_request.validate()
+
+    interests_dict = {}
+    for client_id in clients_interests_request.client_ids:
+        interests_dict[client_id] = scoring.get_interests(store, client_id)
+    ctx['nclients'] = clients_interests_request.nclients()
+    return interests_dict, OK
+
+
+def online_score_handler(ctx, store, method_request):
+    online_score_request = OnlineScoreRequest(method_request.arguments)
+    online_score_request.validate()
+
+    if method_request.is_admin():
+        score = 42
+    else:
+        score = scoring.get_score(
+            store,
+            online_score_request.phone,
+            online_score_request.email,
+            birthday=online_score_request.birthday,
+            gender=online_score_request.gender,
+            first_name=online_score_request.first_name,
+            last_name=online_score_request.last_name)
+    ctx['has'] = online_score_request.has()
+    return {'score': score}, OK
+
+
 def method_handler(request, ctx, store):
+    router = {'online_score': online_score_handler, 'clients_interests': clients_interests_handler}
     response, code = None, None
+
     method_request = MethodRequest(request['body'])
     try:
         method_request.validate()
         if check_auth(method_request):
-            class_request = method_request.request_router[method_request.method]
-            instance_request = class_request(method_request.arguments)
-            response, code = instance_request.get(ctx, store, method_request)
+            if method_request.method in router:
+                handler = router[method_request.method]
+                response, code = handler(ctx, store, method_request)
+            else:
+                raise ValueError('unknown method')
         else:
             response, code = "Invalid token", FORBIDDEN
     except ValueError as e:
@@ -150,10 +153,24 @@ def method_handler(request, ctx, store):
 
 class MainHTTPHandler(BaseHTTPRequestHandler):
     router = {"method": method_handler}
-    store = store.StoreMemory()
+
+    def __init__(self, *args):
+        super().__init__(*args)
+        self.store = store.StoreKVS(*opts.storage.split(','))
 
     def get_request_id(self, headers):
         return headers.get('HTTP_X_REQUEST_ID', uuid.uuid4().hex)
+
+    def do_GET(self):
+        code = NOT_FOUND
+        context = {"request_id": self.get_request_id(self.headers)}
+
+        path = self.path.strip("/")
+        if path == 'ping':
+            code = OK
+
+        self.make_response(None, code, context)
+        return
 
     def do_POST(self):
         response, code = {}, OK
@@ -178,6 +195,10 @@ class MainHTTPHandler(BaseHTTPRequestHandler):
             else:
                 code = NOT_FOUND
 
+        self.make_response(response, code, context)
+        return
+
+    def make_response(self, response, code, context):
         self.send_response(code)
         self.send_header("Content-Type", "application/json")
         self.end_headers()
@@ -187,14 +208,18 @@ class MainHTTPHandler(BaseHTTPRequestHandler):
             r = {"error": response or ERRORS.get(code, "Unknown Error"), "code": code}
         context.update(r)
         logging.info(context)
-        self.wfile.write(json.dumps(r))
+        self.wfile.write(json.dumps(r).encode("utf-8"))
         return
+
+    def log_message(self, format, *args):
+        logging.info('HTTP: ' + format, *args)
 
 
 if __name__ == "__main__":
     op = OptionParser()
     op.add_option("-p", "--port", action="store", type=int, default=8080)
     op.add_option("-l", "--log", action="store", default=None)
+    op.add_option("-s", "--storage", action="store", default="localhost,8010,10,3")
     (opts, args) = op.parse_args()
     logging.basicConfig(
         filename=opts.log,

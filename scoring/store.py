@@ -5,7 +5,7 @@ import abc
 import time
 import collections
 import json
-from http.client import HTTPConnection
+import http.client
 
 
 class StoreBase(metaclass=abc.ABCMeta):
@@ -64,52 +64,50 @@ class StoreKVS(metaclass=abc.ABCMeta):
         self.port = port
         self.timeout = timeout
         self.tries = tries
+        self.connect = http.client.HTTPConnection(self.host, self.port, self.timeout)
 
     def make_request(self, method, request):
+        request_str = json.dumps(request)
         for try_num in range(0, self.tries):
             try:
-                connect = HTTPConnection(self.host, self.port, self.timeout)
-                connect.request('POST', '/' + method, json.dumps(request))
-                response = json.loads(connect.getresponse().read().decode('utf-8'))
-                if 'code' in response and response['code'] == 200 and 'response' in response:
-                    value = response['response']
-                return self.Response(value, True)
-            except:
-                pass
+                self.connect.request('POST', method, request_str)
+                response = self.connect.getresponse()
+                if response.status == 200:
+                    response_decoded = json.loads(response.read().decode('utf-8'))
+                    if 'response' in response_decoded:
+                        return self.Response(response_decoded['response'], True)
+                    else:
+                        raise ValueError
+                time.sleep((try_num + 1) * 0.1)
+            except ConnectionError as e:
+                self.connect = http.client.HTTPConnection(self.host, self.port, self.timeout)
         return self.Response(None, False)
 
     def cache_get(self, key):
         request = {
             'key': key,
         }
-        response = self.make_request('cache_get', request)
+        response = self.make_request('/cache_get', request)
         return response.value
 
     def cache_set(self, key, value, timeout):
         request = {'key': key, 'value': value, 'timeout': timeout}
-        response = self.make_request('cache_set', request)
+        response = self.make_request('/cache_set', request)
 
     def get(self, key):
         request = {
             'key': key,
         }
-        response = self.make_request('data_get', request)
+        response = self.make_request('/data_get', request)
         if not response.success:
             raise KeyError
         return response.value
 
     def set(self, key, value):
         request = {'key': key, 'value': value}
-        response = self.make_request('data_set', request)
+        response = self.make_request('/data_set', request)
         if not response.success:
             raise ValueError
 
 
 StoreKVS.register(StoreBase)
-
-s = StoreKVS('localhost', 8080, None, 3)
-
-# s.set('key2', 'value2')
-
-print(s.get('key2'))
-print(s.get('key'))
