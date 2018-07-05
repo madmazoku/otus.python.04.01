@@ -111,6 +111,17 @@ class MainHTTPHandler(BaseHTTPRequestHandler):
     def get_request_id(self, headers):
         return headers.get('HTTP_X_REQUEST_ID', uuid.uuid4().hex)
 
+    def do_GET(self):
+        code = NOT_FOUND
+        context = {"request_id": self.get_request_id(self.headers)}
+
+        path = self.path.strip("/")
+        if path == 'ping':
+            code = OK
+
+        self.make_response(None, code, context)
+        return
+
     def do_POST(self):
         response, code = {}, OK
         context = {"request_id": self.get_request_id(self.headers)}
@@ -135,6 +146,10 @@ class MainHTTPHandler(BaseHTTPRequestHandler):
             else:
                 code = NOT_FOUND
 
+        self.make_response(response, code, context)
+        return
+
+    def make_response(self, response, code, context):
         self.send_response(code)
         self.send_header("Content-Type", "application/json")
         self.end_headers()
