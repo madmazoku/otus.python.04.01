@@ -3,7 +3,6 @@
 
 import unittest
 import unittest.mock
-import http.client
 
 import store
 from test_base import cases
@@ -126,7 +125,3 @@ class TestSuite(unittest.TestCase):
             with self.assertRaises(ValueError):
                 store_object.set('123', 456)
             mock_make_request.assert_called_once_with(store_object, '/data_set', {'key': '123', 'value': 456})
-
-
-if __name__ == "__main__":
-    unittest.main()

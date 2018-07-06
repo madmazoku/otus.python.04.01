@@ -3,27 +3,20 @@
 
 import hashlib
 import datetime
-import functools
 import unittest
 import unittest.mock
 
 import api
-import store
 from test_base import cases
 
 
-class TestSuite(unittest.TestCase):
-    def setUp(self):
-        self.context = {}
-        self.headers = {}
-        self.store = store.StoreMemory()
-        self.store.set('i:0', '["cars", "pets"]')
-        self.store.set('i:1', '["travel", "hi-tech"]')
-        self.store.set('i:2', '["sport", "music"]')
-        self.store.set('i:3', '["books", "tv"]')
-
-    def get_response(self, request):
-        return api.method_handler({"body": request, "headers": self.headers}, self.context, self.store)
+class TestSuite(object):
+    @classmethod
+    def setUpClass(cls):
+        cls.store.set('i:0', '["cars", "pets"]')
+        cls.store.set('i:1', '["travel", "hi-tech"]')
+        cls.store.set('i:2', '["sport", "music"]')
+        cls.store.set('i:3', '["books", "tv"]')
 
     def set_valid_auth(self, request):
         if request.get("login") == api.ADMIN_LOGIN:
@@ -197,7 +190,8 @@ class TestSuite(unittest.TestCase):
         self.assertEqual(api.OK, code, msg=request)
         score = response.get("score")
         self.assertTrue(isinstance(score, (int, float)) and score >= 0, msg=request)
-        self.assertEqual(sorted(self.context["has"]), sorted(arguments.keys()), msg=request)
+        if hasattr(self, 'context'):
+            self.assertEqual(sorted(self.context["has"]), sorted(arguments.keys()), msg=request)
 
     def test_ok_score_admin_request(self):
         arguments = {"phone": "79175002040", "email": "stupnikov@otus.ru"}
@@ -261,8 +255,5 @@ class TestSuite(unittest.TestCase):
         self.assertTrue(
             all(v and isinstance(v, list) and all(isinstance(i, str) for i in v) for v in response.values()),
             msg=request)
-        self.assertEqual(self.context.get("nclients"), len(arguments["client_ids"]), msg=request)
-
-
-if __name__ == "__main__":
-    unittest.main()
+        if hasattr(self, 'context'):
+            self.assertEqual(self.context.get("nclients"), len(arguments["client_ids"]), msg=request)

@@ -3,13 +3,12 @@
 
 import datetime
 import unittest
-import unittest.mock
 
 import field
 from test_base import cases
 
 
-class TestField(unittest.TestCase):
+class TestSuite(unittest.TestCase):
     @cases([
         (field.Field(field_name='test'), {
             'comment': 'default'
@@ -163,7 +162,3 @@ class TestField(unittest.TestCase):
         field_object = field.ClientIDsField(field_name='test')
         self.assertListEqual(
             field_object.validate(struct), value, msg="{!s} / {!s} -> {!s}".format(type(field), struct, value))
-
-
-if __name__ == "__main__":
-    unittest.main()

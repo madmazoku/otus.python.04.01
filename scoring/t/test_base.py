@@ -8,6 +8,7 @@ import subprocess
 import signal
 import http.client
 import time
+import json
 
 
 def cases(cases):
@@ -23,29 +24,16 @@ def cases(cases):
     return decorator
 
 
-class ManageKVS(object):
-    def __init__(self, port, storage):
-        self.kvs = None
-        self.storage_path = pathlib.Path(storage)
-        self.rm_storage()
-        self.storage_path.mkdir(parents=True)
+class ManageService(object):
+    def __init__(self, port, command):
         self.port = port
+        self.command = command
+        self.process = None
 
-    def rm_storage(self):
-        if self.storage_path.is_dir():
-            for path_file in self.storage_path.iterdir():
-                path_file.unlink()
-            self.storage_path.rmdir()
-
-    def start_kvs(self):
-        if self.kvs is not None:
-            self.stop_kvs()
-        self.kvs = subprocess.Popen([
-            './kvs.py', '-p',
-            str(self.port), '-s',
-            str(self.storage_path), '-l',
-            str(self.storage_path / 'report.log')
-        ])
+    def start(self):
+        if self.process is not None:
+            self.stop()
+        self.process = subprocess.Popen(self.command.split(' '))
         try_num = 0
         while (True):
             try_num += 1
@@ -53,8 +41,10 @@ class ManageKVS(object):
             try:
                 connect.request('GET', '/ping', headers={'connection': 'close'})
                 response = connect.getresponse()
-                response.close()
-                return
+                if response.status == 200:
+                    response_decoded = json.loads(response.read().decode('utf-8'))
+                    if response_decoded.get('code', None) == 200:
+                        return
             except ConnectionError as e:
                 if try_num < 3:
                     time.sleep((try_num + 1) * 0.1)
@@ -63,16 +53,16 @@ class ManageKVS(object):
             finally:
                 connect.close()
 
-    def stop_kvs(self):
-        if self.kvs is None:
+    def stop(self):
+        if self.process is None:
             return
-        self.kvs.send_signal(signal.SIGINT)
+        self.process.send_signal(signal.SIGINT)
         try:
-            if not self.kvs.poll():
-                self.kvs.wait(1)
+            if not self.process.poll():
+                self.process.wait(1)
         except subprocess.TimeoutExpired as e:
-            self.kvs.terminate
-        self.kvs = None
+            self.process.terminate()
+        self.process = None
 
     def make_request(self, path, request):
         connect = http.client.HTTPConnection('localhost', self.port, 1)
@@ -82,3 +72,13 @@ class ManageKVS(object):
         finally:
             connect.close()
         return response
+
+
+class ManageKVS(ManageService):
+    def __init__(self, port, root):
+        super().__init__(port, "./kvs.py -p {:d} -s {!s} -l {!s}".format(port, root, root / 'report_kvs.log'))
+
+
+class ManageAPI(ManageService):
+    def __init__(self, port, root, storage_cfg):
+        super().__init__(port, "./api.py -p {:d} -s {:s} -l {!s}".format(port, storage_cfg, root / 'report_api.log'))

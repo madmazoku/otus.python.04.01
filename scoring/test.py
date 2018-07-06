@@ -4,4 +4,4 @@
 import subprocess
 
 if __name__ == "__main__":
-    subprocess.run(['python3', '-m', 'unittest', 'discover'])
+    subprocess.run(['python3', '-m', 'unittest', 'discover', '-s', './t'])

@@ -61,9 +61,9 @@ class StoreKVS(metaclass=abc.ABCMeta):
 
     def __init__(self, host, port, timeout, tries):
         self.host = host
-        self.port = port
-        self.timeout = timeout
-        self.tries = tries
+        self.port = int(port)
+        self.timeout = float(timeout)
+        self.tries = int(tries)
         self.connect = http.client.HTTPConnection(self.host, self.port, self.timeout)
 
     def make_request(self, method, request):

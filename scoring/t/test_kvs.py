@@ -4,24 +4,31 @@
 import unittest
 import json
 import time
+import pathlib
+import shutil
 
 from test_base import ManageKVS
 
 
 class TestSuite(unittest.TestCase):
     def setUp(self):
-        self.kvs = ManageKVS(8010, './test_kvs')
+        self.root = pathlib.Path('./test_kvs')
+        if self.root.is_dir():
+            shutil.rmtree(self.root)
+        self.root.mkdir(parents=True)
+        self.kvs = ManageKVS(8010, self.root)
 
     def tearDown(self):
-        self.kvs.stop_kvs()
-        self.kvs.rm_storage()
+        self.kvs.stop()
+        if self.root.is_dir():
+            shutil.rmtree(self.root)
 
-    def test_start_stop_kvs(self):
-        self.kvs.start_kvs()
-        self.kvs.stop_kvs()
+    def test_start_stop(self):
+        self.kvs.start()
+        self.kvs.stop()
 
     def test_cache_kvs(self):
-        self.kvs.start_kvs()
+        self.kvs.start()
 
         response = self.kvs.make_request('/cache_get', '{"key": "123"}')
         response_decoded = json.loads(response.read().decode('utf-8'))
@@ -38,9 +45,9 @@ class TestSuite(unittest.TestCase):
         self.assertEqual(response_decoded['code'], 200)
         self.assertDictEqual(response_decoded['response'], {"a": 1, "b": 2})
 
-        self.kvs.stop_kvs()
+        self.kvs.stop()
 
-        self.kvs.start_kvs()
+        self.kvs.start()
 
         response = self.kvs.make_request('/cache_get', '{"key": "123"}')
         response_decoded = json.loads(response.read().decode('utf-8'))
@@ -65,10 +72,10 @@ class TestSuite(unittest.TestCase):
         self.assertEqual(response_decoded['code'], 200)
         self.assertIsNone(response_decoded['response'])
 
-        self.kvs.stop_kvs()
+        self.kvs.stop()
 
     def test_data_kvs(self):
-        self.kvs.start_kvs()
+        self.kvs.start()
 
         response = self.kvs.make_request('/data_get', '{"key": "123"}')
         response_decoded = json.loads(response.read().decode('utf-8'))
@@ -84,8 +91,4 @@ class TestSuite(unittest.TestCase):
         self.assertEqual(response_decoded['code'], 200)
         self.assertDictEqual(response_decoded['response'], {"a": 1, "b": 2})
 
-        self.kvs.stop_kvs()
-
-
-if __name__ == "__main__":
-    unittest.main()
+        self.kvs.stop()

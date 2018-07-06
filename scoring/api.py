@@ -135,6 +135,8 @@ def method_handler(request, ctx, store):
     router = {'online_score': online_score_handler, 'clients_interests': clients_interests_handler}
     response, code = None, None
 
+    logging.info("method_handler %s" % request)
+
     method_request = MethodRequest(request['body'])
     try:
         method_request.validate()
@@ -154,10 +156,6 @@ def method_handler(request, ctx, store):
 class MainHTTPHandler(BaseHTTPRequestHandler):
     router = {"method": method_handler}
 
-    def __init__(self, *args):
-        super().__init__(*args)
-        self.store = store.StoreKVS(*opts.storage.split(','))
-
     def get_request_id(self, headers):
         return headers.get('HTTP_X_REQUEST_ID', uuid.uuid4().hex)
 
@@ -173,7 +171,7 @@ class MainHTTPHandler(BaseHTTPRequestHandler):
         return
 
     def do_POST(self):
-        response, code = {}, OK
+        response, code = {}, INVALID_REQUEST
         context = {"request_id": self.get_request_id(self.headers)}
         request = None
         data_string = None
@@ -194,6 +192,8 @@ class MainHTTPHandler(BaseHTTPRequestHandler):
                     code = INTERNAL_ERROR
             else:
                 code = NOT_FOUND
+
+        logging.info("do_POST %s : %d", response, code)
 
         self.make_response(response, code, context)
         return
@@ -226,6 +226,7 @@ if __name__ == "__main__":
         level=logging.INFO,
         format='[%(asctime)s] %(levelname).1s %(message)s',
         datefmt='%Y.%m.%d %H:%M:%S')
+    MainHTTPHandler.store = store.StoreKVS(*opts.storage.split(','))
     server = HTTPServer(("localhost", opts.port), MainHTTPHandler)
     logging.info("Starting server at %s" % opts.port)
     try:
