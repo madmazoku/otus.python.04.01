@@ -135,8 +135,6 @@ def method_handler(request, ctx, store):
     router = {'online_score': online_score_handler, 'clients_interests': clients_interests_handler}
     response, code = None, None
 
-    logging.info("method_handler %s" % request)
-
     method_request = MethodRequest(request['body'])
     try:
         method_request.validate()
@@ -160,12 +158,14 @@ class MainHTTPHandler(BaseHTTPRequestHandler):
         return headers.get('HTTP_X_REQUEST_ID', uuid.uuid4().hex)
 
     def do_GET(self):
-        code = NOT_FOUND
+        code = INVALID_REQUEST
         context = {"request_id": self.get_request_id(self.headers)}
 
         path = self.path.strip("/")
         if path == 'ping':
             code = OK
+        else:
+            code = NOT_FOUND
 
         self.make_response(None, code, context)
         return
@@ -192,8 +192,6 @@ class MainHTTPHandler(BaseHTTPRequestHandler):
                     code = INTERNAL_ERROR
             else:
                 code = NOT_FOUND
-
-        logging.info("do_POST %s : %d", response, code)
 
         self.make_response(response, code, context)
         return
