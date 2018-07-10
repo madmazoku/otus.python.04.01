@@ -27,7 +27,7 @@ class TestSuite(unittest.TestCase):
 
             mock_connection.return_value.getresponse.side_effect = [
                 ConnectionError(),
-                HTTPResponseMock(400, '{"code":400, "response": null}'),
+                HTTPResponseMock(400, '{"code":400, "'),
                 HTTPResponseMock(200, '{"code":200, "response": "response"}'),
             ]
 
@@ -38,7 +38,7 @@ class TestSuite(unittest.TestCase):
                 unittest.mock.call('POST', '/test', '{"test": "test"}'),
                 unittest.mock.call('POST', '/test', '{"test": "test"}')
             ])
-            self.assertEqual(response, store.StoreKVS.Response('response', True))
+            self.assertEqual(response, 'response')
 
     def test_retry_request_fail(self):
         with unittest.mock.patch('http.client.HTTPConnection', autospec=True) as mock_connection:
@@ -49,17 +49,17 @@ class TestSuite(unittest.TestCase):
             ]
 
             store_object = store.StoreKVS('localhost', 8010)
-            response = store_object.make_request('/test', {'test': 'test'})
+            with self.assertRaises(ConnectionError):
+                store_object.make_request('/test', {'test': 'test'})
             mock_connection.return_value.request.assert_has_calls([
                 unittest.mock.call('POST', '/test', '{"test": "test"}'),
                 unittest.mock.call('POST', '/test', '{"test": "test"}'),
                 unittest.mock.call('POST', '/test', '{"test": "test"}')
             ])
-            self.assertEqual(response, store.StoreKVS.Response(None, False))
 
     def test_cache_get_success(self):
         with unittest.mock.patch('store.StoreKVS.make_request', autospec=True) as mock_make_request:
-            mock_make_request.return_value = store.StoreKVS.Response('response', True)
+            mock_make_request.return_value = 'response'
             store_object = store.StoreKVS('localhost', 8010)
             value = store_object.cache_get('123')
             mock_make_request.assert_called_once_with(store_object, '/cache_get', {'key': '123'})
@@ -67,7 +67,14 @@ class TestSuite(unittest.TestCase):
 
     def test_cache_get_fail(self):
         with unittest.mock.patch('store.StoreKVS.make_request', autospec=True) as mock_make_request:
-            mock_make_request.return_value = store.StoreKVS.Response(None, False)
+            mock_make_request.side_effect = ConnectionError
+            store_object = store.StoreKVS('localhost', 8010)
+            value = store_object.cache_get('123')
+            mock_make_request.assert_called_once_with(store_object, '/cache_get', {'key': '123'})
+            self.assertIsNone(value)
+
+        with unittest.mock.patch('store.StoreKVS.make_request', autospec=True) as mock_make_request:
+            mock_make_request.side_effect = KeyError
             store_object = store.StoreKVS('localhost', 8010)
             value = store_object.cache_get('123')
             mock_make_request.assert_called_once_with(store_object, '/cache_get', {'key': '123'})
@@ -75,7 +82,7 @@ class TestSuite(unittest.TestCase):
 
     def test_cache_set_success(self):
         with unittest.mock.patch('store.StoreKVS.make_request', autospec=True) as mock_make_request:
-            mock_make_request.return_value = store.StoreKVS.Response('response', True)
+            mock_make_request.return_value = None
             store_object = store.StoreKVS('localhost', 8010)
             store_object.cache_set('123', 456, 789)
             mock_make_request.assert_called_once_with(store_object, '/cache_set', {
@@ -86,7 +93,7 @@ class TestSuite(unittest.TestCase):
 
     def test_cache_set_fail(self):
         with unittest.mock.patch('store.StoreKVS.make_request', autospec=True) as mock_make_request:
-            mock_make_request.return_value = store.StoreKVS.Response(None, False)
+            mock_make_request.side_effect = ConnectionError
             store_object = store.StoreKVS('localhost', 8010)
             store_object.cache_set('123', 456, 789)
             mock_make_request.assert_called_once_with(store_object, '/cache_set', {
@@ -97,7 +104,7 @@ class TestSuite(unittest.TestCase):
 
     def test_data_get_success(self):
         with unittest.mock.patch('store.StoreKVS.make_request', autospec=True) as mock_make_request:
-            mock_make_request.return_value = store.StoreKVS.Response('response', True)
+            mock_make_request.return_value = 'response'
             store_object = store.StoreKVS('localhost', 8010)
             value = store_object.get('123')
             mock_make_request.assert_called_once_with(store_object, '/data_get', {'key': '123'})
@@ -105,7 +112,14 @@ class TestSuite(unittest.TestCase):
 
     def test_data_get_fail(self):
         with unittest.mock.patch('store.StoreKVS.make_request', autospec=True) as mock_make_request:
-            mock_make_request.return_value = store.StoreKVS.Response(None, False)
+            mock_make_request.side_effect = ConnectionError
+            store_object = store.StoreKVS('localhost', 8010)
+            with self.assertRaises(ConnectionError):
+                store_object.get('123')
+            mock_make_request.assert_called_once_with(store_object, '/data_get', {'key': '123'})
+
+        with unittest.mock.patch('store.StoreKVS.make_request', autospec=True) as mock_make_request:
+            mock_make_request.side_effect = KeyError
             store_object = store.StoreKVS('localhost', 8010)
             with self.assertRaises(KeyError):
                 store_object.get('123')
@@ -113,15 +127,15 @@ class TestSuite(unittest.TestCase):
 
     def test_data_set_success(self):
         with unittest.mock.patch('store.StoreKVS.make_request', autospec=True) as mock_make_request:
-            mock_make_request.return_value = store.StoreKVS.Response('response', True)
+            mock_make_request.return_value = None
             store_object = store.StoreKVS('localhost', 8010)
             store_object.set('123', 456)
             mock_make_request.assert_called_once_with(store_object, '/data_set', {'key': '123', 'value': 456})
 
     def test_data_set_fail(self):
         with unittest.mock.patch('store.StoreKVS.make_request', autospec=True) as mock_make_request:
-            mock_make_request.return_value = store.StoreKVS.Response(None, False)
+            mock_make_request.side_effect = ConnectionError
             store_object = store.StoreKVS('localhost', 8010)
-            with self.assertRaises(ValueError):
+            with self.assertRaises(ConnectionError):
                 store_object.set('123', 456)
             mock_make_request.assert_called_once_with(store_object, '/data_set', {'key': '123', 'value': 456})

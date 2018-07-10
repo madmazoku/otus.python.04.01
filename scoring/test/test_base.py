@@ -47,7 +47,7 @@ class ManageService(object):
                         return
             except ConnectionError as e:
                 if try_num < 3:
-                    time.sleep((try_num + 1) * 0.1)
+                    time.sleep(try_num * 0.1)
                 else:
                     raise
             finally:
