@@ -1,32 +1,13 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-import abc
 import time
 import collections
 import json
 import http.client
 
 
-class StoreBase(metaclass=abc.ABCMeta):
-    @abc.abstractmethod
-    def cache_get(self, key):
-        pass
-
-    @abc.abstractmethod
-    def cache_set(self, key, value, timeout):
-        pass
-
-    @abc.abstractmethod
-    def get(self, key):
-        pass
-
-    @abc.abstractmethod
-    def set(self, key, value):
-        pass
-
-
-class StoreMemory(metaclass=abc.ABCMeta):
+class StoreMemory(object):
     CacheRecord = collections.namedtuple('CacheRecord', 'value expire')
 
     def __init__(self):
@@ -53,13 +34,10 @@ class StoreMemory(metaclass=abc.ABCMeta):
         self.data[key] = value
 
 
-StoreMemory.register(StoreBase)
-
-
-class StoreKVS(metaclass=abc.ABCMeta):
+class StoreKVS(object):
     Response = collections.namedtuple('Response', 'value success')
 
-    def __init__(self, host, port, timeout, tries):
+    def __init__(self, host, port, timeout = 10, tries = 3):
         self.host = host
         self.port = int(port)
         self.timeout = float(timeout)
@@ -110,4 +88,3 @@ class StoreKVS(metaclass=abc.ABCMeta):
             raise ValueError
 
 
-StoreKVS.register(StoreBase)

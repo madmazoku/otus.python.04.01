@@ -22,7 +22,7 @@ class TestSuite(test_api.TestSuite, unittest.TestCase):
         cls.api = ManageAPI(8082, cls.root, 'localhost,8012,10,3')
         cls.kvs.start()
         cls.api.start()
-        cls.store = store.StoreKVS('localhost', 8012, 10, 3)
+        cls.store = store.StoreKVS('localhost', 8012)
         super().setUpClass()
 
     @classmethod

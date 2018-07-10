@@ -28,7 +28,7 @@ class TestSuite(test_store.TestSuite, unittest.TestCase):
             shutil.rmtree(cls.root)
 
     def make_store(self):
-        return store.StoreKVS('localhost', 8011, 10, 3)
+        return store.StoreKVS('localhost', 8011)
 
     def test_cache_expire(self):
         store_object = self.make_store()
