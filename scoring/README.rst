@@ -38,9 +38,11 @@ Options
 
         -s : path to storage directory, default .
 
-    ./test.py
+    ./test.py [-v]
 
         test suite
+
+        -v : verbose flag
 
 
 Example

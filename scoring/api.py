@@ -177,8 +177,9 @@ class MainHTTPHandler(BaseHTTPRequestHandler):
         data_string = None
         try:
             data_string = self.rfile.read(int(self.headers['Content-Length']))
-            request = json.loads(data_string)
-        except:
+            request = json.loads(data_string.decode('utf-8'))
+        except Exception as e:
+            logging.exception("Read/parse error: %s" % e)
             code = BAD_REQUEST
 
         if request:

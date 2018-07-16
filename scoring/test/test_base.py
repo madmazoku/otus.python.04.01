@@ -9,6 +9,7 @@ import signal
 import http.client
 import time
 import json
+import unittest
 
 
 def cases(cases):
@@ -17,7 +18,11 @@ def cases(cases):
         def wrapper(*args):
             for c in cases:
                 new_args = args + (c if isinstance(c, tuple) else (c, ))
-                f(*new_args)
+                if isinstance(args[0], unittest.TestCase):
+                    with args[0].subTest(c):
+                        f(*new_args)
+                else:
+                    f(*new_args)
 
         return wrapper
 
@@ -35,7 +40,7 @@ class ManageService(object):
             self.stop()
         self.process = subprocess.Popen(self.command.split(' '))
         try_num = 0
-        while (True):
+        while True:
             try_num += 1
             connect = http.client.HTTPConnection('localhost', self.port, 1)
             try:
@@ -56,13 +61,19 @@ class ManageService(object):
     def stop(self):
         if self.process is None:
             return
+        time.sleep(0.1)
         self.process.send_signal(signal.SIGINT)
+        time.sleep(0.1)
         try:
             if not self.process.poll():
                 self.process.wait(1)
         except subprocess.TimeoutExpired as e:
             self.process.terminate()
         self.process = None
+
+    def restart(self):
+        self.stop()
+        self.start()
 
     def make_request(self, path, request):
         connect = http.client.HTTPConnection('localhost', self.port, 1)
