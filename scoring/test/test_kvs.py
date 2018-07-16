@@ -14,14 +14,14 @@ class TestSuite(unittest.TestCase):
     def setUp(self):
         self.root = pathlib.Path('./test_kvs')
         if self.root.is_dir():
-            shutil.rmtree(self.root)
+            shutil.rmtree(str(self.root))
         self.root.mkdir(parents=True)
         self.kvs = ManageKVS(8010, self.root)
 
     def tearDown(self):
         self.kvs.stop()
         if self.root.is_dir():
-            shutil.rmtree(self.root)
+            shutil.rmtree(str(self.root))
 
     def test_start_stop(self):
         self.kvs.start()

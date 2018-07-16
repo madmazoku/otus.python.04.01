@@ -16,7 +16,7 @@ class TestSuite(test_store.TestSuite, unittest.TestCase):
     def setUpClass(cls):
         cls.root = pathlib.Path('./test_store_kvs_integration')
         if cls.root.is_dir():
-            shutil.rmtree(cls.root)
+            shutil.rmtree(str(cls.root))
         cls.root.mkdir(parents=True)
         cls.kvs = ManageKVS(8011, cls.root)
         cls.kvs.start()
@@ -25,7 +25,7 @@ class TestSuite(test_store.TestSuite, unittest.TestCase):
     def tearDownClass(cls):
         cls.kvs.stop()
         if cls.root.is_dir():
-            shutil.rmtree(cls.root)
+            shutil.rmtree(str(cls.root))
 
     def make_store(self):
         return store.StoreKVS('localhost', 8011)

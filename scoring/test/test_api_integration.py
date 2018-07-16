@@ -16,7 +16,7 @@ class TestSuite(test_api.TestSuite, unittest.TestCase):
     def setUpClass(cls):
         cls.root = pathlib.Path('./test_api_integration')
         if cls.root.is_dir():
-            shutil.rmtree(cls.root)
+            shutil.rmtree(str(cls.root))
         cls.root.mkdir(parents=True)
         cls.kvs = ManageKVS(8012, cls.root)
         cls.api = ManageAPI(8082, cls.root, 'localhost,8012,10,3')
@@ -30,7 +30,7 @@ class TestSuite(test_api.TestSuite, unittest.TestCase):
         cls.api.stop()
         cls.kvs.stop()
         if cls.root.is_dir():
-            shutil.rmtree(cls.root)
+            shutil.rmtree(str(cls.root))
 
     def get_response(self, request):
         response = self.api.make_request('/method', json.dumps(request))
